@@ -5,13 +5,14 @@ jubatus-utils
 Currently following tools are available:
 
 * ``jubatop``: monitor Jubatus cluster status in top-like interface
+* ``jubamodel``: dump Jubatus 0.5.x model
 
 You may also be interested in [Jubash](https://github.com/kmaehashi/jubash), a handy tool that can call Jubatus APIs from command line.
 
 Requirements
 ----------------
 
-* Jubatus (any version)
+* Jubatus
 * Python 2.6 or later
 * msgpack-rpc-python package (``pip install msgpack-rpc-python``)
 
