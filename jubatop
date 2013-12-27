@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+jubatop - Real-Time Jubatus Cluster Monitoring Tool
+Copyright © 2013 Kenichi Maehashi. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License version 2.1 as published by the Free Software Foundation.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+'''
+
+import sys
+import time
+from datetime import datetime
+import curses
+import optparse
+
+import msgpackrpc
+
+class JubaTop(object):
+    SERVER_HEADER = 'SERVER'
+
+    KEYS_COMMON  = ['PROGNAME', 'VERSION']
+    KEYS_RUNTIME = ['RSS', 'SHR', 'VIRT', 'update_count']
+    KEYS_STATIC  = ['datadir', 'storage', 'threadnum', 'timeout', 'use_cht', 'zk', 'is_standalone', 'interval_count', 'interval_sec']
+
+    KEYS_KNOWN = set(KEYS_COMMON + KEYS_RUNTIME + KEYS_STATIC)
+
+    def __init__(self, host, port, cluster, interval):
+        self.record = {}
+        self.host = host
+        self.port = port
+        self.cluster = cluster
+        self.interval = interval
+
+    def start(self):
+        try:
+            curses.setupterm()
+            while True:
+                self.update_record()
+                sys.stdout.write(curses.tigetstr('clear'))
+                self.show()
+                time.sleep(self.interval)
+        except KeyboardInterrupt:
+            pass
+        return
+
+    def update_record(self):
+        client = msgpackrpc.Client(msgpackrpc.Address(self.host, self.port), timeout=self.interval*2)
+        self.record = client.call('get_status', self.cluster)
+        client.close()
+
+    def show(self):
+        # calculate width for each column
+        id_width = len(self.SERVER_HEADER)
+        keys_width = {}
+        for server_id in self.record:
+            for key in self.record[server_id]:
+                if key not in keys_width:
+                    keys_width[key] = len(str(key))
+                keys_width[key] = max(keys_width[key], len(str(self.record[server_id][key])))
+            id_width = max(id_width, len(str(server_id)))
+
+        # select colums to be displayed;
+        # by default keys in KEYS_STATIC are ignored, as it doesn't change forever so is useless to monitor ;)
+        unknown_keys = sorted(set(keys_width.keys()) - self.KEYS_KNOWN)
+        display_keys = self.KEYS_COMMON + self.KEYS_RUNTIME + unknown_keys
+
+        # print header
+        sys.stdout.write("Target:    %s (%s:%d)\n" % (self.cluster, self.host, self.port))
+        sys.stdout.write("Interval:  %d second(s)\n" % self.interval)
+        sys.stdout.write("Updated:   %s\n" % str(datetime.now()))
+        sys.stdout.write('\n')
+        self._print_column(self.SERVER_HEADER, id_width)
+        for key in display_keys:
+            self._print_column(key, keys_width[key])
+        sys.stdout.write('\n')
+
+        # print records
+        for server_id in self.record:
+            self._print_column(server_id, id_width)
+            for key in display_keys:
+                self._print_column(self.record[server_id][key], keys_width[key])
+            sys.stdout.write('\n')
+
+    def _print_column(self, msg, width):
+        sys.stdout.write('{:{width}}'.format(str(msg), width=width+1))
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser()
+
+    # arguments
+    parser.add_option('-H', '--host',      type='string', default='127.0.0.1',
+                      help='host name or IP address of the server / proxy (default: %default)')
+    parser.add_option('-P', '--port',      type='int',    default=9199,
+                      help='port number of the server / proxy (default: %default)')
+    parser.add_option('-C', '--cluster',   type='string', default='',
+                      help='cluster name; only required when connecting to proxy')
+    parser.add_option('-i', '--interval',  type='int',    default=1,
+                      help='refresh interval')
+    parser.add_option('-a', '--all',                      default=False, action='store_true',
+                      help='display all status keys (not implemented yet)')
+    parser.add_option('-f', '--filter',    type='str',    default='',
+                      help='comma-separated list of status keys to filter out (not implemented yet)')
+    parser.add_option('-s', '--sort',      type='str',    default='',
+                      help='status keys used for sort (not implemented yet)')
+
+    (args, _) = parser.parse_args()
+
+    if args.port < 0 or 65535 < args.port:
+        print "Error: port number out of range"
+        sys.exit(1)
+
+    if args.interval <= 0:
+        print "Error: interval must be greater than 0"
+        sys.exit(1)
+
+    jubatop = JubaTop(args.host, args.port, args.cluster, args.interval)
+    jubatop.start()
