@@ -118,12 +118,10 @@ if __name__ == '__main__':
     (args, _) = parser.parse_args()
 
     if args.port < 0 or 65535 < args.port:
-        print "Error: port number out of range"
-        sys.exit(1)
+        parser.error('port number out of range')
 
     if args.interval <= 0:
-        print "Error: interval must be greater than 0"
-        sys.exit(1)
+        parser.error('interval must be greater than 0')
 
     jubatop = JubaTop(args.host, args.port, args.cluster, args.interval)
     jubatop.start()

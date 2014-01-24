@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 '''
 
 import struct
-from datetime import datetime
 import optparse
 
 import msgpack
@@ -112,6 +111,9 @@ if __name__ == '__main__':
                       help='model file path')
 
     (args, _) = parser.parse_args()
+
+    if not args.file:
+        parser.error('no model file specified')
 
     jubamodel = JubaModel(args.file)
     jubamodel.start()
