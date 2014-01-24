@@ -30,11 +30,38 @@ import msgpackrpc
 class JubaTop(object):
     SERVER_HEADER = 'SERVER'
 
-    KEYS_COMMON  = ['PROGNAME', 'VERSION']
-    KEYS_RUNTIME = ['RSS', 'SHR', 'VIRT', 'update_count']
-    KEYS_STATIC  = ['datadir', 'storage', 'threadnum', 'timeout', 'use_cht', 'zk', 'is_standalone', 'interval_count', 'interval_sec']
+    KEYS_COMMON  = ['PROGNAME', 'VERSION', 'pid']
+    KEYS_RUNTIME = ['RSS', 'SHR', 'VIRT', 'update_count', 'uptime']
+    KEYS_STATIC  = [
+                        'start_time',
+                        'user',
+                        'type',
+                        'storage',
+                        'use_cht',
+                        'datadir',
+                        'threadnum',
+                        'timeout',
+                        'zk',
+                        'is_standalone',
+                        'interval_count',
+                        'interval_sec',
+                        'interconnect_timeout',
+                        'zookeeper_timeout',
+                        'configpath',
+                        'name',
+                        'mixer',
+                        'logdir',
+                        'loglevel',
+                   ]
+    KEYS_VERBOSE = [
+                        'clock_time',
+                        'last_loaded',
+                        'last_loaded_path',
+                        'last_saved',
+                        'last_saved_path',
+                   ]
 
-    KEYS_KNOWN = set(KEYS_COMMON + KEYS_RUNTIME + KEYS_STATIC)
+    KEYS_KNOWN = set(KEYS_COMMON + KEYS_RUNTIME + KEYS_STATIC + KEYS_VERBOSE)
 
     def __init__(self, host, port, cluster, interval):
         self.record = {}
