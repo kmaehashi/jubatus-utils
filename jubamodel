@@ -20,7 +20,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 '''
 
 import struct
+import binascii
 import optparse
+from StringIO import StringIO
 
 import msgpack
 
@@ -29,20 +31,21 @@ class JubaModel(object):
         self.target = target
 
     def start(self):
-        model = None
-        try:
-            with open(self.target) as f:
-                model = JubaModelFile.load(f)
-        finally:
-            if model:
-                print "# Header"
-                print model.header.record
-                print
-                print "# System Data"
-                print model.system_data.record
-                print
-                print "# User Data"
-                print model.user_data.record
+        with open(self.target) as f:
+            model = JubaModelFile.load(f)
+        self.print_record(model.header.get_record(),      'Header')
+        self.print_record(model.system_data.get_record(), 'System Data')
+        self.print_record(model.user_data.get_record(),   'User Data')
+
+    def print_record(self, record, heading):
+        print "------------------------------------------"
+        print heading
+        print "------------------------------------------"
+
+        for (k, v) in record:
+            print "{:32}{}".format(k, v)
+
+        print
 
 class JubaModelFile(object):
     def __init__(self):
@@ -50,55 +53,138 @@ class JubaModelFile(object):
         self.system_data = None
         self.user_data = None
 
-    @staticmethod
-    def load(f):
-        model = JubaModelFile()
-        model.header = JubaModelFile.Header.load(f)
-        model.system_data = JubaModelFile.DataContainer.load(f, model.header.record['system_data_size'])
-        model.user_data = JubaModelFile.DataContainer.load(f, model.header.record['user_data_size'])
+    @classmethod
+    def load(cls, f, validate=True):
+        m = JubaModelFile()
 
-        garbage = f.read(1)
-        if len(garbage) != 0:
-            raise InvalidModelFormatError('trailing garbage detected')
+        h = JubaModelFile.Header.load(f)
+        bodylen = h.system_data_size + h.user_data_size
 
-        return model
+        if validate:
+            if not h.magic_number == 'jubatus\0':
+                raise InvalidModelFormatError('invalid magic value: %s' % h.magic_number)
+
+            # TODO read as stream
+            buf = f.read(bodylen)
+
+            if len(buf) != bodylen:
+                raise InvalidModelFormatError('invalid body length')
+
+            # TODO CRC32 validation
+
+            # must be EOF here
+            garbage = f.read(1)
+            if len(garbage) != 0:
+                raise InvalidModelFormatError('trailing garbage detected')
+        else:
+            buf = f.read(bodylen)
+
+        m.header = h
+
+        bufio = StringIO(buf)
+        m.system_data = JubaModelFile.SystemDataContainer.load(bufio, h.system_data_size)
+        m.user_data   = JubaModelFile.UserDataContainer.load(bufio, h.user_data_size)
+
+        return m
 
     class Header(object):
-        def __init__(self):
-            self.record = {}
+        FIELDS = [
+            ('magic_number'         , '8s'),
+            ('format_version'       , '>Q'),
+            ('jubatus_version_major', '>I'),
+            ('jubatus_version_minor', '>I'),
+            ('jubatus_version_maint', '>I'),
+            ('crc32'                , '>I'),
+            ('system_data_size'     , '>Q'),
+            ('user_data_size'       , '>Q'),
+        ]
 
         @classmethod
         def load(cls, f):
-            header = cls()
-            header._read_header(f, 8, 'magic_number', '8s')
-            header._read_header(f, 8, 'format_version', '>Q')
-            header._read_header(f, 4, 'jubatus_version_major', '>I')
-            header._read_header(f, 4, 'jubatus_version_minor', '>I')
-            header._read_header(f, 4, 'jubatus_version_maintenance', '>I')
-            header._read_header(f, 4, 'crc32', '>I')
-            header._read_header(f, 8, 'system_data_size', '>Q')
-            header._read_header(f, 8, 'user_data_size', '>Q')
-            return header
+            h = cls()
+            for (key, fmt) in cls.FIELDS:
+                setattr(h, key, h._read(f, fmt))
+            return h
 
-        def _read_header(self, f, b, key, fmt):
-            value = f.read(b)
-            if len(value) != b:
-                raise InvalidModelFormatError('failed to read %s' % key)
+        def get_record(self):
+            record = []
+            for (f, _) in self.FIELDS:
+                record.append((f, getattr(self, f)))
+            return record
+
+        def saves(self):
+            buf = ''
+            for (key, fmt) in self.FIELDS:
+                buf += struct.pack(fmt, getattr(self, key))
+            return buf
+
+        @staticmethod
+        def _read(f, fmt):
+            size = struct.calcsize(fmt)
+            value = f.read(size)
+            if len(value) != size:
+                raise InvalidModelFormatError('failed to read %s in header' % key)
             try:
-                self.record[key] = struct.unpack(fmt, value)[0]
+                return struct.unpack(fmt, value)[0]
             except ValueError:
-                raise InvalidModelFormatError('failed to parse %s value %s as %s' % (key, str(value), str(t)))
+                raise InvalidModelFormatError('failed to parse %s value %s as %s' % (key, str(value), fmt))
 
     class DataContainer(object):
-        def __init__(self):
-            self.record = {}
-
         @classmethod
         def load(cls, f, size):
-            container = cls()
-            data = f.read(size)
-            container.record = msgpack.loads(data)
-            return container
+            # TODO stream load
+            return cls._load_array(msgpack.loads(f.read(size)))
+
+        @classmethod
+        def loads(cls, data):
+            return cls._load_array(msgpack.loads(data))
+
+        @classmethod
+        def _load_array(cls, arr):
+            dc = cls()
+            dc.version = arr.pop(0)
+            fields = cls.get_fields_for_version(dc.version)
+
+            count_delta = len(fields) - len(arr)
+            # TODO maybe some warnings required?
+            if 0 < count_delta:
+                # Less fields than expected.
+                pass
+            elif count_delta < 0:
+                # More fields than expected.
+                for i in xrange(count_delta):
+                    fields.append('UNKNOWN_FIELD_%d' % i)
+            for idx in xrange(len(arr)):
+                setattr(dc, fields[idx], arr[idx])
+            return dc
+
+        @classmethod
+        def get_fields_for_version(cls, version):
+            raise NotImplementedError
+
+        def get_record(self):
+            record = [('version', self.version)]
+            for f in self.get_fields_for_version(self.version):
+                record.append((f, getattr(self, f)))
+            return record
+
+    class SystemDataContainer(DataContainer):
+        FIELDS = ['timestamp', 'type', 'id', 'config']
+
+        @classmethod
+        def get_fields_for_version(cls, version):
+            if version != 1:
+                raise InvalidModelFormatError('unsupported system_data_container version')
+            return cls.FIELDS
+
+    class UserDataContainer(DataContainer):
+        FIELDS = ['user_data']
+
+        @classmethod
+        def get_fields_for_version(cls, version):
+            if version != 1:
+                raise InvalidModelFormatError('unsupported user_data_container version')
+            return cls.FIELDS
 
 class InvalidModelFormatError(BaseException):
     pass
