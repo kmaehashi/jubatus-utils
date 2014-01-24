@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+jubafetch - Fetch Jubatus Model Online
+Copyright © 2013 Kenichi Maehashi. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License version 2.1 as published by the Free Software Foundation.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+'''
+
+import sys
+import os
+import tempfile
+import subprocess
+import optparse
+
+import msgpackrpc
+
+class JubaFetch(object):
+    def __init__(self, host, port, cluster, timeout, output):
+        self.host = host
+        self.port = port
+        self.cluster = cluster
+        self.timeout = timeout
+        self.output = output
+
+    def start(self):
+        (target_server, model_path) = self.save_model()
+
+        print "Target Server: %s" % target_server
+        print "Model File: %s" % model_path
+
+        (fd, tmp_file) = tempfile.mkstemp()
+        self.get_file(target_server, model_path, tmp_file)
+        os.rename(tmp_file, self.output)
+        print "Saved as %s" % self.output
+
+    def save_model(self, model_name='jubafetch_snapshot'):
+        client = msgpackrpc.Client(msgpackrpc.Address(self.host, self.port), self.timeout)
+        (server_id, server_stat) = client.call('get_status', self.cluster).popitem()
+        client.call('save', self.cluster, model_name)
+        client.close()
+        model_path = server_stat['datadir'] + '/' + server_id + '_jubatus_' + model_name + '.' + self._ext_for_version(server_stat['VERSION'])
+        return (server_id.split('_')[0], model_path)
+
+    def get_file(self, server, path, dest):
+        cmdline = ['scp', server + ':' + path, dest]
+        print "Transfering... " + str(cmdline)
+        subprocess.check_call(cmdline)
+
+    def _ext_for_version(self, ver):
+        (major, minor, maintenance) = ver.split('.')
+        if major == 0 and minor < 5:
+            return 'js'
+        else:
+            return 'jubatus'
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser()
+
+    # arguments
+    parser.add_option('-H', '--host',      type='string', default='127.0.0.1',
+                      help='host name or IP address of the server / proxy (default: %default)')
+    parser.add_option('-P', '--port',      type='int',    default=9199,
+                      help='port number of the server / proxy (default: %default)')
+    parser.add_option('-C', '--cluster',   type='string', default='',
+                      help='cluster name; only required when connecting to proxy')
+    parser.add_option('-T', '--timeout',   type='int',    default=120,
+                      help='timeout for save model')
+    parser.add_option('-o', '--output',    type='string', default='model.jubatus',
+                      help='save fetched model at specified path (default: %default)')
+
+    (args, _) = parser.parse_args()
+
+    if args.port < 0 or 65535 < args.port:
+        print "Error: port number out of range"
+        sys.exit(1)
+
+    jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.output)
+    jubafetch.start()
