@@ -27,63 +27,139 @@ import optparse
 import msgpackrpc
 
 class JubaFetch(object):
-    def __init__(self, host, port, cluster, timeout, output):
-        self.host = host
-        self.port = port
-        self.cluster = cluster
-        self.timeout = timeout
-        self.output = output
+  def __init__(self, host, port, cluster, timeout, verbose):
+    self.host = host
+    self.port = port
+    self.cluster = cluster
+    self.timeout = timeout
+    self.verbose = verbose
 
-    def start(self):
-        (target_server, model_path) = self.save_model()
+  def start_save(self, pattern, model_name='jubafetch_snapshot'):
+    try:
+      self.log('Requesting save...')
+      self.send_rpc('save', model_name)
+      self.log('Collecting models...')
+      self.cluster_model_collect(pattern, model_name)
+    finally:
+      self.log('Cleaning up...')
+      self.cluster_model_remove(model_name)
 
-        print "Target Server: %s" % target_server
-        print "Model File: %s" % model_path
+  def start_load(self, pattern, model_name='jubafetch_load'):
+    try:
+      self.log('Distributing models...')
+      self.cluster_model_distribute(pattern, model_name)
+      self.log('Requesting load...')
+      self.send_rpc('load', model_name)
+    finally:
+      self.log('Cleaning up...')
+      self.cluster_model_remove(model_name)
 
-        (fd, tmp_file) = tempfile.mkstemp()
-        self.get_file(target_server, model_path, tmp_file)
-        os.rename(tmp_file, self.output)
-        print "Saved as %s" % self.output
+  def cluster_model_collect(self, pattern, model_name):
+    for (host, port, model_path) in self.get_model_paths(model_name):
+      self.log('collecting: {}:{} ({})'.format(host, port, model_path), True)
+      (fd, tmp_file) = tempfile.mkstemp(prefix='jubafetch-{host}-{port}-'.format(host=host, port=port))
+      try:
+        RemoteUtil.get_file(host, model_path, tmp_file)
+        out_file = pattern.format(host=host, port=port)
+        os.rename(tmp_file, out_file)
+        self.log('saved: {}'.format(out_file), True)
+      except:
+        os.close(fd)
+        os.unlink(tmp_file)
+        raise
 
-    def save_model(self, model_name='jubafetch_snapshot'):
-        client = msgpackrpc.Client(msgpackrpc.Address(self.host, self.port), self.timeout)
-        (server_id, server_stat) = client.call('get_status', self.cluster).popitem()
-        client.call('save', self.cluster, model_name)
-        client.close()
-        model_path = server_stat['datadir'] + '/' + server_id + '_jubatus_' + model_name + '.' + self._ext_for_version(server_stat['VERSION'])
-        return (server_id.split('_')[0], model_path)
+  def cluster_model_distribute(self, pattern, model_name):
+    for (host, port, model_path) in self.get_model_paths(model_name):
+      self.log('distributing: {}:{} ({})'.format(host, port, model_path), True)
+      source_path = pattern.format(host=host, port=port)
+      RemoteUtil.put_file(host, source_path, model_path)
 
-    def get_file(self, server, path, dest):
-        cmdline = ['scp', server + ':' + path, dest]
-        print "Transfering... " + str(cmdline)
-        subprocess.check_call(cmdline)
+  def cluster_model_remove(self, model_name):
+    for (host, port, model_path) in self.get_model_paths(model_name):
+      self.log('removing: {}:{} ({})'.format(host, port, model_path), True)
+      RemoteUtil.remove_file(host, model_path)
 
-    def _ext_for_version(self, ver):
-        (major, minor, maintenance) = ver.split('.')
-        if major == 0 and minor < 5:
-            return 'js'
-        else:
-            return 'jubatus'
+  def get_model_paths(self, model_name):
+    """
+    Return list of 3-tuple (host, port, model_path)
+    """
+    result = []
+    statuses = self.send_rpc('get_status')
+    for (id, stat) in statuses.items():
+      model_path = stat['datadir'] + '/' + id + '_jubatus_' + model_name + '.' + self._ext_for_version(stat['VERSION'])
+      (host, port) = id.split('_')
+      result.append((host, port, model_path))
+    return result
+
+  def send_rpc(self, method, *params):
+    client = msgpackrpc.Client(msgpackrpc.Address(self.host, self.port), self.timeout)
+    result = client.call(method, self.cluster, *params)
+    client.close()
+    return result
+
+  def log(self, msg, verbose=False):
+    if not verbose or self.verbose:
+      print(msg)
+
+  def _ext_for_version(self, ver):
+    (major, minor, maintenance) = map(int, ver.split('.'))
+    if major == 0 and minor < 5:
+      return 'js'
+    else:
+      return 'jubatus'
+
+class RemoteUtil(object):
+  @classmethod
+  def _run(cls, cmdline):
+    return subprocess.check_call(cmdline)
+
+  @classmethod
+  def _scp(cls, src, dst):
+    return cls._run(['scp', src, dst])
+
+  @classmethod
+  def get_file(cls, host, source_path, dest_path):
+    return cls._scp(host + ':' + source_path, dest_path)
+
+  @classmethod
+  def put_file(cls, host, source_path, dest_path):
+    return cls._scp(source_path, host + ':' + dest_path)
+
+  @classmethod
+  def remove_file(cls, host, path):
+    return cls._run(['ssh', host, 'rm', '-f', path])
 
 if __name__ == '__main__':
-    parser = optparse.OptionParser()
+  parser = optparse.OptionParser()
 
-    # arguments
-    parser.add_option('-H', '--host',      type='string', default='127.0.0.1',
-                      help='host name or IP address of the server / proxy (default: %default)')
-    parser.add_option('-P', '--port',      type='int',    default=9199,
-                      help='port number of the server / proxy (default: %default)')
-    parser.add_option('-C', '--cluster',   type='string', default='',
-                      help='cluster name; only required when connecting to proxy')
-    parser.add_option('-T', '--timeout',   type='int',    default=120,
-                      help='timeout for save model')
-    parser.add_option('-o', '--output',    type='string', default='model.jubatus',
-                      help='save fetched model at specified path (default: %default)')
+  # arguments
+  parser.add_option('-H', '--host',      type='string', default='127.0.0.1',
+                    help='host name or IP address of the server / proxy (default: %default)')
+  parser.add_option('-P', '--port',      type='int',    default=9199,
+                    help='port number of the server / proxy (default: %default)')
+  parser.add_option('-C', '--cluster',   type='string', default='',
+                    help='cluster name; only required when connecting to proxy')
+  parser.add_option('-T', '--timeout',   type='int',    default=120,
+                    help='timeout for RPC connection')
+  parser.add_option('-s', '--save',      action='store_true', default=None,
+                    help='save model (default)')
+  parser.add_option('-l', '--load',      action='store_true', default=None,
+                    help='load model')
+  parser.add_option('-m', '--model',     type='str',    default='model_{host}-{port}.jubatus',
+                    help='local model path to load from or save to (default: %default)')
+  parser.add_option('-v', '--verbose',   action='store_true', default=False,
+                    help='log verbosely')
 
-    (args, _) = parser.parse_args()
+  (args, _) = parser.parse_args()
 
-    if args.port < 0 or 65535 < args.port:
-        parser.error('port number out of range')
+  if args.port < 0 or 65535 < args.port:
+    parser.error('port number out of range')
+  if args.save and args.load:
+    parser.error('save and load cannot be specified at once')
 
-    jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.output)
-    jubafetch.start()
+  jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.verbose)
+
+  if args.load:
+    jubafetch.start_load(args.model)
+  else:
+    jubafetch.start_save(args.model)

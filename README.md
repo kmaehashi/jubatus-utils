@@ -6,7 +6,7 @@ Currently following tools are available:
 
 * ``jubatop``: monitor Jubatus cluster status in top-like interface
 * ``jubamodel``: dump Jubatus 0.5.x model
-* ``jubafetch``: take snapshot of Jubatus model from running server
+* ``jubafetch``: online snapshot management of Jubatus model
 
 You may also be interested in [Jubash](https://github.com/kmaehashi/jubash), a handy tool that can call Jubatus APIs from command line.
 
