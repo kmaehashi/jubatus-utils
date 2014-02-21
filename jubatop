@@ -93,7 +93,7 @@ class JubaTop(object):
         keys_width = {}
         for server_id in self.record:
             for key in self.record[server_id]:
-                if key not in keys_width:
+                if not key in keys_width:
                     keys_width[key] = len(str(key))
                 keys_width[key] = max(keys_width[key], len(str(self.record[server_id][key])))
             id_width = max(id_width, len(str(server_id)))
@@ -102,6 +102,11 @@ class JubaTop(object):
         # by default keys in KEYS_STATIC are ignored, as it doesn't change forever so is useless to monitor ;)
         unknown_keys = sorted(set(keys_width.keys()) - self.KEYS_KNOWN)
         display_keys = self.KEYS_COMMON + self.KEYS_RUNTIME + unknown_keys
+
+        # define default values
+        for key in display_keys:
+            if key not in keys_width:
+                keys_width[key] = len(str(key))
 
         # print header
         sys.stdout.write("Target:    %s (%s:%d)\n" % (self.cluster, self.host, self.port))
@@ -117,7 +122,10 @@ class JubaTop(object):
         for server_id in self.record:
             self._print_column(server_id, id_width)
             for key in display_keys:
-                self._print_column(self.record[server_id][key], keys_width[key])
+                value = ''
+                if key in self.record[server_id]:
+                    value = self.record[server_id][key]
+                self._print_column(value, keys_width[key])
             sys.stdout.write('\n')
 
     def _print_column(self, msg, width):
