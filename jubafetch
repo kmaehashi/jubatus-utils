@@ -35,27 +35,29 @@ class JubaFetch(object):
     self.verbose = verbose
 
   def start_save(self, pattern, model_name='jubafetch_snapshot'):
+    model_paths = self.get_model_paths(model_name)
     try:
       self.log('Requesting save...')
       self.send_rpc('save', model_name)
       self.log('Collecting models...')
-      self.cluster_model_collect(pattern, model_name)
+      self.cluster_model_collect(pattern, model_paths)
     finally:
       self.log('Cleaning up...')
-      self.cluster_model_remove(model_name)
+      self.cluster_model_remove(model_paths)
 
   def start_load(self, pattern, model_name='jubafetch_snapshot'):
+    model_paths = self.get_model_paths(model_name)
     try:
       self.log('Distributing models...')
-      self.cluster_model_distribute(pattern, model_name)
+      self.cluster_model_distribute(pattern, model_paths)
       self.log('Requesting load...')
       self.send_rpc('load', model_name)
     finally:
       self.log('Cleaning up...')
-      self.cluster_model_remove(model_name)
+      self.cluster_model_remove(model_paths)
 
-  def cluster_model_collect(self, pattern, model_name):
-    for (host, port, model_path) in self.get_model_paths(model_name):
+  def cluster_model_collect(self, pattern, model_paths):
+    for (host, port, model_path) in model_paths:
       self.log('collecting: {}:{} ({})'.format(host, port, model_path), True)
       (fd, tmp_file) = tempfile.mkstemp(prefix='jubafetch-{host}-{port}-'.format(host=host, port=port))
       try:
@@ -68,14 +70,14 @@ class JubaFetch(object):
         os.unlink(tmp_file)
         raise
 
-  def cluster_model_distribute(self, pattern, model_name):
-    for (host, port, model_path) in self.get_model_paths(model_name):
+  def cluster_model_distribute(self, pattern, model_paths):
+    for (host, port, model_path) in model_paths:
       self.log('distributing: {}:{} ({})'.format(host, port, model_path), True)
       source_path = pattern.format(host=host, port=port)
       RemoteUtil.put_file(host, source_path, model_path)
 
-  def cluster_model_remove(self, model_name):
-    for (host, port, model_path) in self.get_model_paths(model_name):
+  def cluster_model_remove(self, model_paths):
+    for (host, port, model_path) in model_paths:
       self.log('removing: {}:{} ({})'.format(host, port, model_path), True)
       RemoteUtil.remove_file(host, model_path)
 
