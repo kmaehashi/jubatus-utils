@@ -119,11 +119,11 @@ class RemoteUtil(object):
 
   @classmethod
   def get_file(cls, host, source_path, dest_path):
-    return cls._scp(host + ':' + source_path, dest_path)
+    return cls._scp(host + ':' + os.path.abspath(source_path), dest_path)
 
   @classmethod
   def put_file(cls, host, source_path, dest_path):
-    return cls._scp(source_path, host + ':' + dest_path)
+    return cls._scp(os.path.abspath(source_path), host + ':' + dest_path)
 
   @classmethod
   def remove_file(cls, host, path):
