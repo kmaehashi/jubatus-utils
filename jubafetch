@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-jubafetch - Fetch Jubatus Model Online
+jubafetch - Online Model Snapshot Management
 Copyright © 2014 Kenichi Maehashi. All rights reserved.
 
 This library is free software; you can redistribute it and/or
