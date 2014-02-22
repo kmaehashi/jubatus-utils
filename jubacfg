@@ -1,0 +1,99 @@
+#!/bin/bash -ue
+
+# jubacfg - jubaconfig wrapper for the rest of us
+# Copyright © 2014 Kenichi Maehashi. All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License version 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+main() {
+  if [ -z "${ZK:-}" ]; then
+    export ZK=localhost:2181
+  fi
+
+  JUBACONFIG="jubaconfig --debug"
+
+  case "${1:-help}" in
+    write | set )
+      [ ${#} == 4 ] || usage
+      ENGINE="$(normalize_engine_name "${2}")"
+      ${JUBACONFIG} --cmd write --type "${ENGINE}" --name "${3}" --file "${4}"
+      ;;
+    read | show | get )
+      [ ${#} == 3 ] || usage
+      ENGINE="$(normalize_engine_name "${2}")"
+      ${JUBACONFIG} --cmd read --type "${ENGINE}" --name "${3}"
+      ;;
+    list )
+      [ ${#} == 1 ] || usage
+      ${JUBACONFIG} --cmd list
+      ;;
+    delete | del | rm )
+      [ ${#} == 3 ] || usage
+      ENGINE="$(normalize_engine_name "${2}")"
+      ${JUBACONFIG} --cmd delete --type "${ENGINE}" --name "${3}"
+      ;;
+    --help | help | * )
+      usage
+      ;;
+  esac
+}
+
+normalize_engine_name() {
+  # Note: abbreviation form may change in the future version!
+  case "${1}" in
+    classifier | cla )
+      echo classifier ;;
+    regression | reg )
+      echo regression ;;
+    recommender | rec )
+      echo recommender ;;
+    nearest_neighbor | nn )
+      echo nearest_neighbor ;;
+    anomaly | ano )
+      echo anomaly ;;
+    stat | sta )
+      echo stat ;;
+    clustering | clu )
+      echo clustering ;;
+    graph | gra )
+      echo graph ;;
+    * )
+      echo "Error: Unknown engine name: ${1}" > /dev/stderr
+      exit 1
+  esac
+}
+
+usage() {
+  CMD="$(basename "${0}")"
+  cat << _EOF_ > /dev/stderr
+Usage:
+  ${CMD} { write | set }       TYPE NAME FILE
+  ${CMD} { read | show | get } TYPE NAME
+  ${CMD} { delete | del | rm } TYPE NAME
+  ${CMD} list
+  ${CMD} --help
+
+  (Arguments)
+     TYPE = name of the engine (classifier, regression, ...)
+     NAME = name of the cluster
+     FILE = path of the JSON-formatted config file to upload
+
+localhost:2181 is used as the default ZooKeeper server.
+Use ZK environment variable to override.
+_EOF_
+  exit 1
+}
+
+
+main "${@}"
