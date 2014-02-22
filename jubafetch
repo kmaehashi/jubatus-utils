@@ -44,7 +44,7 @@ class JubaFetch(object):
       self.log('Cleaning up...')
       self.cluster_model_remove(model_name)
 
-  def start_load(self, pattern, model_name='jubafetch_load'):
+  def start_load(self, pattern, model_name='jubafetch_snapshot'):
     try:
       self.log('Distributing models...')
       self.cluster_model_distribute(pattern, model_name)
