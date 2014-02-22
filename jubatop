@@ -122,7 +122,7 @@ class JubaTop(object):
         for server_id in self.record:
             self._print_column(server_id, id_width)
             for key in display_keys:
-                value = ''
+                value = '-'
                 if key in self.record[server_id]:
                     value = self.record[server_id][key]
                 self._print_column(value, keys_width[key])
