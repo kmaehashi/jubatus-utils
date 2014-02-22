@@ -34,7 +34,7 @@ class JubaFetch(object):
     self.timeout = timeout
     self.verbose = verbose
 
-  def start_save(self, pattern, model_name='jubafetch_snapshot'):
+  def start_save(self, pattern, model_name):
     model_paths = self.get_model_paths(model_name)
     try:
       self.log('Requesting save...')
@@ -45,7 +45,7 @@ class JubaFetch(object):
       self.log('Cleaning up...')
       self.cluster_model_remove(model_paths)
 
-  def start_load(self, pattern, model_name='jubafetch_snapshot'):
+  def start_load(self, pattern, model_name):
     model_paths = self.get_model_paths(model_name)
     try:
       self.log('Distributing models...')
@@ -149,6 +149,8 @@ if __name__ == '__main__':
                     help='load model')
   parser.add_option('-m', '--model',     type='str',    default='model_{host}-{port}.jubatus',
                     help='local model path to load from or save to (default: %default)')
+  parser.add_option('-i', '--id',        type='str',    default='jubafetch_snapshot',
+                    help='model ID used for save/load (default: %default)')
   parser.add_option('-v', '--verbose',   action='store_true', default=False,
                     help='log verbosely')
 
@@ -162,6 +164,6 @@ if __name__ == '__main__':
   jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.verbose)
 
   if args.load:
-    jubafetch.start_load(args.model)
+    jubafetch.start_load(args.model, args.id)
   else:
-    jubafetch.start_save(args.model)
+    jubafetch.start_save(args.model, args.id)
