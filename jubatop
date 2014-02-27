@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 import sys
 import time
 from datetime import datetime
+from StringIO import StringIO
 import curses
 import optparse
 
@@ -74,9 +75,12 @@ class JubaTop(object):
         try:
             curses.setupterm()
             while True:
+                out = StringIO()
                 self.update_record()
+                self.show(out)
                 sys.stdout.write(curses.tigetstr('clear'))
-                self.show()
+                sys.stdout.write(out.getvalue())
+                out.close()
                 time.sleep(self.interval)
         except KeyboardInterrupt:
             pass
@@ -87,7 +91,7 @@ class JubaTop(object):
         self.record = client.call('get_status', self.cluster)
         client.close()
 
-    def show(self):
+    def show(self, out):
         # calculate width for each column
         id_width = len(self.SERVER_HEADER)
         keys_width = {}
@@ -109,27 +113,27 @@ class JubaTop(object):
                 keys_width[key] = len(str(key))
 
         # print header
-        sys.stdout.write("Target:    %s (%s:%d)\n" % (self.cluster, self.host, self.port))
-        sys.stdout.write("Interval:  %d second(s)\n" % self.interval)
-        sys.stdout.write("Updated:   %s\n" % str(datetime.now()))
-        sys.stdout.write('\n')
-        self._print_column(self.SERVER_HEADER, id_width)
+        out.write("Target:    %s (%s:%d)\n" % (self.cluster, self.host, self.port))
+        out.write("Interval:  %d second(s)\n" % self.interval)
+        out.write("Updated:   %s\n" % str(datetime.now()))
+        out.write('\n')
+        self._print_column(self.SERVER_HEADER, id_width, out)
         for key in display_keys:
-            self._print_column(key, keys_width[key])
-        sys.stdout.write('\n')
+            self._print_column(key, keys_width[key], out)
+        out.write('\n')
 
         # print records
         for server_id in self.record:
-            self._print_column(server_id, id_width)
+            self._print_column(server_id, id_width, out)
             for key in display_keys:
                 value = '-'
                 if key in self.record[server_id]:
                     value = self.record[server_id][key]
-                self._print_column(value, keys_width[key])
-            sys.stdout.write('\n')
+                self._print_column(value, keys_width[key], out)
+            out.write('\n')
 
-    def _print_column(self, msg, width):
-        sys.stdout.write('{:{width}}'.format(str(msg), width=width+1))
+    def _print_column(self, msg, width, out):
+        out.write('{:{width}}'.format(str(msg), width=width+1))
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
