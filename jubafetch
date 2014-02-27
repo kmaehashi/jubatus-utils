@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 '''
 
 import os
+import sys
 import tempfile
 import subprocess
 import optparse
@@ -27,15 +28,21 @@ import optparse
 import msgpackrpc
 
 class JubaFetch(object):
-  def __init__(self, host, port, cluster, timeout, verbose):
+  def __init__(self, host, port, cluster, timeout, force, verbose):
     self.host = host
     self.port = port
     self.cluster = cluster
     self.timeout = timeout
+    self.force = force
     self.verbose = verbose
 
   def start_save(self, pattern, model_name):
     model_paths = self.get_model_paths(model_name)
+    for (host, port, model_path) in model_paths:
+      out_file = pattern.format(host=host, port=port)
+      if os.path.exists(out_file) and not self.force:
+        self.log('Local file already exists; specify -f to overwrite: {}'.format(out_file))
+        return
     try:
       self.log('Requesting save...')
       self.send_rpc('save', model_name)
@@ -47,6 +54,11 @@ class JubaFetch(object):
 
   def start_load(self, pattern, model_name):
     model_paths = self.get_model_paths(model_name)
+    for (host, port, model_path) in model_paths:
+      in_file = pattern.format(host=host, port=port)
+      if not os.path.exists(in_file):
+        self.log('Local file not found: {}'.format(in_file))
+        return
     try:
       self.log('Distributing models...')
       self.cluster_model_distribute(pattern, model_paths)
@@ -151,6 +163,8 @@ if __name__ == '__main__':
                     help='local model path to load from or save to (default: %default)')
   parser.add_option('-i', '--id',        type='str',    default='jubafetch_snapshot',
                     help='model ID used for save/load (default: %default)')
+  parser.add_option('-f', '--force',     action='store_true', default=False,
+                    help='overwrite existing model file when --save')
   parser.add_option('-v', '--verbose',   action='store_true', default=False,
                     help='log verbosely')
 
@@ -161,9 +175,15 @@ if __name__ == '__main__':
   if args.save and args.load:
     parser.error('save and load cannot be specified at once')
 
-  jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.verbose)
+  jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.force, args.verbose)
 
-  if args.load:
-    jubafetch.start_load(args.model, args.id)
-  else:
-    jubafetch.start_save(args.model, args.id)
+  try:
+    if args.load:
+      jubafetch.start_load(args.model, args.id)
+    else:
+      jubafetch.start_save(args.model, args.id)
+  except BaseException as e:
+    if args.verbose:
+      raise
+    print "{}: {}".format(e.__class__.__name__, str(e))
+    sys.exit(2)
