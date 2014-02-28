@@ -168,12 +168,14 @@ if __name__ == '__main__':
   parser.add_option('-v', '--verbose',   action='store_true', default=False,
                     help='log verbosely')
 
-  (args, _) = parser.parse_args()
+  (args, direct_args) = parser.parse_args()
 
   if args.port < 0 or 65535 < args.port:
     parser.error('port number out of range')
   if args.save and args.load:
     parser.error('save and load cannot be specified at once')
+  if len(direct_args) != 0:
+    parser.error('unused remaining arguments: {}'.format(direct_args))
 
   jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.force, args.verbose)
 
