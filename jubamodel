@@ -186,7 +186,7 @@ class JubaModelFile(object):
                 raise InvalidModelFormatError('unsupported user_data_container version')
             return cls.FIELDS
 
-class InvalidModelFormatError(BaseException):
+class InvalidModelFormatError(Exception):
     pass
 
 if __name__ == '__main__':
