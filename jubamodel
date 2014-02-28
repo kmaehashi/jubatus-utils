@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 import sys
 from struct import pack, unpack, calcsize
 from binascii import crc32
-from StringIO import StringIO
+from cStringIO import StringIO
 import optparse
 
 import msgpack
