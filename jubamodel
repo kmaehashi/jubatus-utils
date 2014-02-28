@@ -67,27 +67,30 @@ class JubaModelFile(object):
     self.user_data =   JubaModelFile.UserDataContainer()
 
   def update_header(self):
-    checksum = 0
-
-    buf = StringIO()
-    self.header.dump(buf, False)
-    checksum = crc32(buf.getvalue(), checksum)
-    buf.close()
-
-    buf = StringIO()
-    self.system_data.dump(buf)
-    self.header.system_data_size = len(buf.getvalue())
-    checksum = crc32(buf.getvalue(), checksum)
-    buf.close()
-
-    buf = StringIO()
-    self.user_data.dump(buf)
-    self.header.user_data_size = len(buf.getvalue())
-    checksum = crc32(buf.getvalue(), checksum)
-    buf.close()
-
     self.header.magic_number = self.MAGIC
-    self.header.crc32 = unpack('I', pack('i', checksum))[0]
+
+    buf_header = StringIO()
+    buf_system = StringIO()
+    buf_user = StringIO()
+
+    try:
+      self.system_data.dump(buf_system)
+      self.header.system_data_size = len(buf_system.getvalue())
+
+      self.user_data.dump(buf_user)
+      self.header.user_data_size = len(buf_user.getvalue())
+
+      checksum = 0
+      self.header.dump(buf_header, False)
+
+      checksum = crc32(buf_header.getvalue(), checksum)
+      checksum = crc32(buf_system.getvalue(), checksum)
+      checksum = crc32(buf_user.getvalue(), checksum)
+      self.header.crc32 = unpack('I', pack('i', checksum))[0]
+    finally:
+      buf_header.close()
+      buf_system.close()
+      buf_user.close()
 
   @classmethod
   def load(cls, f, validate=True):
@@ -128,8 +131,8 @@ class JubaModelFile(object):
         raise InvalidModelFormatError('trailing garbage detected')
     else:
       m.header      = JubaModelFile.Header.load(f)
-      m.system_data = JubaModelFile.SystemDataContainer.load(f)
-      m.user_data   = JubaModelFile.UserDataContainer.load(f)
+      m.system_data = JubaModelFile.SystemDataContainer.load(StringIO(f.read(m.header.system_data_size)))
+      m.user_data   = JubaModelFile.UserDataContainer.load(StringIO(f.read(m.header.user_data_size)))
     return m
 
   def dump(self, f):
