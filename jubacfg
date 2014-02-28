@@ -27,26 +27,28 @@ main() {
     write | set )
       [ ${#} == 4 ] || usage
       ENGINE="$(normalize_engine_name "${2}")"
-      ${JUBACONFIG} --cmd write --type "${ENGINE}" --name "${3}" --file "${4}"
+      CMDLINE="${JUBACONFIG} --cmd write --type "${ENGINE}" --name "${3}" --file "${4}""
       ;;
     read | show | get )
       [ ${#} == 3 ] || usage
       ENGINE="$(normalize_engine_name "${2}")"
-      ${JUBACONFIG} --cmd read --type "${ENGINE}" --name "${3}"
+      CMDLINE="${JUBACONFIG} --cmd read --type "${ENGINE}" --name "${3}""
       ;;
     list )
       [ ${#} == 1 ] || usage
-      ${JUBACONFIG} --cmd list
+      CMDLINE="${JUBACONFIG} --cmd list"
       ;;
     delete | del | rm )
       [ ${#} == 3 ] || usage
       ENGINE="$(normalize_engine_name "${2}")"
-      ${JUBACONFIG} --cmd delete --type "${ENGINE}" --name "${3}"
+      CMDLINE="${JUBACONFIG} --cmd delete --type "${ENGINE}" --name "${3}""
       ;;
     --help | help | * )
       usage
       ;;
   esac
+  echo "${CMDLINE}" > /dev/stderr
+  ${CMDLINE}
 }
 
 normalize_engine_name() {
