@@ -5,7 +5,7 @@ jubatus-utils
 Currently following tools are available:
 
 * ``jubatop``: monitor Jubatus cluster status in top-like interface
-* ``jubamodel``: dump Jubatus 0.5.x model
+* ``jubamodel``: dump/transform Jubatus 0.5.x model
 * ``jubafetch``: online snapshot management of Jubatus model
 * ``jubacfg``: jubaconfig wrapper for the rest of us
 
