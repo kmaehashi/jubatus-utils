@@ -31,13 +31,22 @@ import json
 class JubaModel(object):
   def start(self, in_file, out_file, in_format, out_format, no_validate, fix_header):
     # input
-    with open(in_file) as f:
-      if in_format == 'binary':
-        model = JubaModelFile.load(f, not no_validate)
-      elif in_format == 'json':
-        model = JubaModelFile.load_json(f)
-      else:
-        raise ValueError(in_format)
+    try:
+      with open(in_file) as f:
+        if in_format == 'binary':
+          model = JubaModelFile.load_binary(f, not no_validate)
+        elif in_format == 'json':
+          model = JubaModelFile.load_json(f)
+        elif in_format == 'auto':
+          model = JubaModelFile.load(f, not no_validate)
+        else:
+          raise ValueError(in_format)
+    except InvalidModelFormatError as e:
+      print("Error: invalid model format: {}".format(e))
+      return
+    except BaseException as e:
+      print("Error: failed to read model: {}".format(e))
+      return
 
     if fix_header:
       model.update_header()
@@ -48,13 +57,16 @@ class JubaModel(object):
       out = open(out_file, 'wb')
     try:
       if out_format == 'binary':
-        model.dump(out)
+        model.dump_binary(out)
       elif out_format == 'json':
         model.dump_json(out)
       elif out_format == 'text':
         out.write(str(model))
       else:
         raise ValueError(out_format)
+    except BaseException as e:
+      print("Error: failed to write model: {}".format(e))
+      return
     finally:
       out.close()
 
@@ -94,6 +106,16 @@ class JubaModelFile(object):
 
   @classmethod
   def load(cls, f, validate=True):
+    m = f.read(1)
+    f.seek(-1, 1)
+    if m == cls.MAGIC[0]:
+      return cls.load_binary(f, validate)
+    elif m == '{':
+      return cls.load_json(f)
+    raise InvalidModelFormatError('failed to auto-detect format')
+
+  @classmethod
+  def load_binary(cls, f, validate=True):
     m = JubaModelFile()
 
     if validate:
@@ -135,7 +157,7 @@ class JubaModelFile(object):
       m.user_data   = JubaModelFile.UserDataContainer.load(StringIO(f.read(m.header.user_data_size)))
     return m
 
-  def dump(self, f):
+  def dump_binary(self, f):
     self.header.dump(f)
     self.system_data.dump(f)
     self.user_data.dump(f)
@@ -289,9 +311,9 @@ if __name__ == '__main__':
   parser = optparse.OptionParser(add_help_option=False, usage=USAGE, epilog=EPILOG)
 
   # arguments
-  parser.add_option('-i', '--in-format',       choices=('binary','json'),        default='binary',
+  parser.add_option('-i', '--in-format',       choices=('auto','binary','json'), default='auto',
                     help='model input format (default: %default)')
-  parser.add_option('-o', '--out-format',      choices=('binary','json','text'), default='text',
+  parser.add_option('-o', '--out-format',      choices=('text','binary','json'), default='text',
                     help='model output format (default: %default)')
   parser.add_option('-O', '--output',          type='str',                       default=None,
                     help='specify output file instead of stdout')
@@ -308,8 +330,8 @@ if __name__ == '__main__':
     parser.print_help()
     print ""
     print "Supported Model Formats:"
-    print "  IN_FORMAT:  binary | json"
-    print "  OUT_FORMAT: binary | json | text"
+    print "  IN_FORMAT:  auto | binary | json"
+    print "  OUT_FORMAT: text | binary | json"
     sys.exit(1)
 
   if len(files) == 0:
