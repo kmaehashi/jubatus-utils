@@ -36,7 +36,7 @@ class JubaFetch(object):
     self.force = force
     self.verbose = verbose
 
-  def start_save(self, pattern, model_name):
+  def start_save(self, pattern, model_name, local):
     model_paths = self.get_model_paths(model_name)
     for (host, port, model_path) in model_paths:
       out_file = pattern.format(host=host, port=port)
@@ -47,12 +47,12 @@ class JubaFetch(object):
       self.log('Requesting save...')
       self.send_rpc('save', model_name)
       self.log('Collecting models...')
-      self.cluster_model_collect(pattern, model_paths)
+      self.cluster_model_collect(pattern, model_paths, local)
     finally:
       self.log('Cleaning up...')
-      self.cluster_model_remove(model_paths)
+      self.cluster_model_remove(model_paths, local)
 
-  def start_load(self, pattern, model_name):
+  def start_load(self, pattern, model_name, local):
     model_paths = self.get_model_paths(model_name)
     for (host, port, model_path) in model_paths:
       in_file = pattern.format(host=host, port=port)
@@ -61,37 +61,42 @@ class JubaFetch(object):
         return
     try:
       self.log('Distributing models...')
-      self.cluster_model_distribute(pattern, model_paths)
+      self.cluster_model_distribute(pattern, model_paths, local)
       self.log('Requesting load...')
       self.send_rpc('load', model_name)
     finally:
       self.log('Cleaning up...')
-      self.cluster_model_remove(model_paths)
+      self.cluster_model_remove(model_paths, local)
 
-  def cluster_model_collect(self, pattern, model_paths):
+  def cluster_model_collect(self, pattern, model_paths, local):
+    proc = ModelFileManipulator.get(local)
     for (host, port, model_path) in model_paths:
       self.log('collecting: {0}:{1} ({2})'.format(host, port, model_path), True)
       (fd, tmp_file) = tempfile.mkstemp(prefix='jubafetch-{host}-{port}-'.format(host=host, port=port))
       try:
-        RemoteUtil.get_file(host, model_path, tmp_file)
+        self.log('using temporary file: {}'.format(tmp_file), True)
+        proc.get_file(host, model_path, tmp_file)
         out_file = pattern.format(host=host, port=port)
         os.rename(tmp_file, out_file)
         self.log('saved: {}'.format(out_file), True)
       except:
-        os.close(fd)
         os.unlink(tmp_file)
         raise
+      finally:
+        os.close(fd)
 
-  def cluster_model_distribute(self, pattern, model_paths):
+  def cluster_model_distribute(self, pattern, model_paths, local):
+    proc = ModelFileManipulator.get(local)
     for (host, port, model_path) in model_paths:
       self.log('distributing: {0}:{1} ({2})'.format(host, port, model_path), True)
       source_path = pattern.format(host=host, port=port)
-      RemoteUtil.put_file(host, source_path, model_path)
+      proc.put_file(host, source_path, model_path)
 
-  def cluster_model_remove(self, model_paths):
+  def cluster_model_remove(self, model_paths, local):
+    proc = ModelFileManipulator.get(local)
     for (host, port, model_path) in model_paths:
       self.log('removing: {0}:{1} ({2})'.format(host, port, model_path), True)
-      RemoteUtil.remove_file(host, model_path)
+      proc.remove_file(host, model_path)
 
   def get_model_paths(self, model_name):
     """
@@ -123,24 +128,29 @@ class JubaFetch(object):
 
     return stat['datadir'] + '/' + id + '_' + engine + '_' + name + '.' + ext
 
-class RemoteUtil(object):
-  @classmethod
-  def _run(cls, cmdline):
+class ModelFileManipulator(object):
+  def _run(self, cmdline):
     return subprocess.check_call(cmdline)
 
   @classmethod
-  def _scp(cls, src, dst):
-    return cls._run(['scp', src, dst])
+  def get(cls, is_local):
+    if is_local:
+      return LocalModelFileManipulator()
+    return RemoteModelFileManipulator()
 
-  @classmethod
-  def get_file(cls, host, source_path, dest_path):
-    return cls._scp(host + ':' + os.path.abspath(source_path), dest_path)
+class LocalModelFileManipulator(ModelFileManipulator):
+  def get_file(self, _, source_path, dest_path):
+    return self._run(['cp', source_path, dest_path])
+  def put_file(self, _, source_path, dest_path):
+    return self._run(['ln', '-sf', source_path, dest_path])
+  def remove_file(self, _, path):
+    return self._run(['rm', '-f', path])
 
-  @classmethod
-  def put_file(cls, host, source_path, dest_path):
-    return cls._scp(os.path.abspath(source_path), host + ':' + dest_path)
-
-  @classmethod
+class RemoteModelFileManipulator(ModelFileManipulator):
+  def get_file(self, host, source_path, dest_path):
+    return self._run(['scp', host + ':' + os.path.abspath(source_path), dest_path])
+  def put_file(self, host, source_path, dest_path):
+    return self._run(['scp', os.path.abspath(source_path), host + ':' + dest_path])
   def remove_file(cls, host, path):
     return cls._run(['ssh', host, 'rm', '-f', path])
 
@@ -164,6 +174,8 @@ if __name__ == '__main__':
                     help='local model path to load from or save to (default: %default)')
   parser.add_option('-i', '--id',        type='str',    default='jubafetch_snapshot',
                     help='model ID used for save/load (default: %default)')
+  parser.add_option('-L', '--local',     action='store_true', default=False,
+                    help='directly manipulate files instead of ssh/scp, assuming the data directory is on local (or shared) file system')
   parser.add_option('-f', '--force',     action='store_true', default=False,
                     help='overwrite existing model file when --save')
   parser.add_option('-v', '--verbose',   action='store_true', default=False,
@@ -182,9 +194,9 @@ if __name__ == '__main__':
 
   try:
     if args.load:
-      jubafetch.start_load(args.model, args.id)
+      jubafetch.start_load(args.model, args.id, args.local)
     else:
-      jubafetch.start_save(args.model, args.id)
+      jubafetch.start_save(args.model, args.id, args.local)
   except Exception as e:
     if args.verbose:
       raise
