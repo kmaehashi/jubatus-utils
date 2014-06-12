@@ -8,6 +8,7 @@ Currently following tools are available:
 * ``jubamodel``: dump/transform Jubatus 0.5.x model
 * ``jubafetch``: online snapshot management of Jubatus model
 * ``jubacfg``: jubaconfig wrapper for the rest of us
+* ``zk``: Wrapper for ZooKeeper Four Letter Commands
 
 For the detailed usage, see the built-in documentation using ``--help`` option.
 

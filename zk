@@ -1,0 +1,100 @@
+#!/bin/bash -ue
+
+# zk - Wrapper for ZooKeeper Four Letter Commands
+# Copyright © 2014 Kenichi Maehashi. All rights reserved.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License version 2.1 as published by the Free Software Foundation.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+main() {
+  if [ -z "${ZK:-}" ]; then
+    export ZK=localhost:2181
+  fi
+
+  case "${1:-help}" in
+    conf | cons | crst | dump | envi | kill | reqs | ruok | srst | srvr | stat | wchs | wchc | wchp | mntr )
+      FOUR_LETTER_CMD="${1}"
+      ;;
+    help )
+      usage
+      ;;
+    * )
+      echo "Unknown subcommand: "${1}"" > /dev/stderr
+      usage
+      ;;
+  esac
+
+  echo "${ZK}" | tr "," "\n" | tr ":" " " | while read ZKHOST ZKPORT; do
+    echo "========================= ${ZKHOST}:${ZKPORT} ========================="
+    echo "${FOUR_LETTER_CMD}" | nc -v "${ZKHOST}" "${ZKPORT}"
+    echo
+  done
+}
+
+usage() {
+  CMD="$(basename "${0}")"
+  cat << _EOF_ > /dev/stderr
+Usage:
+  ${CMD} <subcommand>
+
+Subcommands:
+  conf
+    New in 3.3.0: Print details about serving configuration.
+  cons
+    New in 3.3.0: List full connection/session details for all clients connected to this server.
+    Includes information on numbers of packets received/sent, session id, operation latencies, last operation performed, etc...
+  crst
+    New in 3.3.0: Reset connection/session statistics for all connections.
+  dump
+    Lists the outstanding sessions and ephemeral nodes.
+    This only works on the leader.
+  envi
+    Print details about serving environment
+  kill
+    Shuts down the server.
+    This must be issued from the machine the ZooKeeper server is running on.
+  reqs
+    List outstanding requests
+  ruok
+    Tests if server is running in a non-error state.
+    The server will respond with imok if it is running.
+    Otherwise it will not respond at all.
+  srst
+    Reset statistics returned by stat command.
+  srvr
+    New in 3.3.0: Lists full details for the server.
+  stat
+    Lists statistics about performance and connected clients.
+  wchs
+    New in 3.3.0: Lists brief information on watches for the server.
+  wchc
+    New in 3.3.0: Lists detailed information on watches for the server, by session.
+    This outputs a list of sessions(connections) with associated watches (paths).
+    Note, depending on the number of watches this operation may be expensive (ie impact server performance), use it carefully.
+  wchp
+    New in 3.3.0: Lists detailed information on watches for the server, by path.
+    This outputs a list of paths (znodes) with associated sessions.
+    Note, depending on the number of watches this operation may be expensive (ie impact server performance), use it carefully.
+  mntr
+    New in 3.4.0: Outputs a list of variables that could be used for monitoring the health of the cluster.
+
+  help
+    Display the usage.
+
+localhost:2181 is used as the default ZooKeeper server.
+Use ZK environment variable to override.
+_EOF_
+  exit 1
+}
+
+main "${@}"
