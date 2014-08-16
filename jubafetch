@@ -100,7 +100,7 @@ class JubaFetch(object):
     result = []
     statuses = self.send_rpc('get_status')
     for (id, stat) in statuses.items():
-      model_path = stat['datadir'] + '/' + id + '_jubatus_' + model_name + '.' + self._ext_for_version(stat['VERSION'])
+      model_path = self.create_model_path(model_name, id, stat)
       (host, port) = id.split('_')
       result.append((host, port, model_path))
     return result
@@ -115,12 +115,13 @@ class JubaFetch(object):
     if not verbose or self.verbose:
       print(msg)
 
-  def _ext_for_version(self, ver):
-    (major, minor, maintenance) = map(int, ver.split('.'))
-    if major == 0 and minor < 5:
-      return 'js'
-    else:
-      return 'jubatus'
+  def create_model_path(self, name, id, stat):
+    (major, minor, maintenance) = map(int, stat['VERSION'].split('.'))
+
+    ext = 'js' if (major == 0 and minor < 5) else 'jubatus'
+    engine = 'jubatus' if (major == 0 and minor < 6) else stat['type']
+
+    return stat['datadir'] + '/' + id + '_' + engine + '_' + name + '.' + ext
 
 class RemoteUtil(object):
   @classmethod
