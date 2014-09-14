@@ -4,10 +4,10 @@ jubatus-utils
 ``jubatus-utils`` is a set of utilities for managing Jubatus.
 Currently following tools are available:
 
-* ``jubatop``: monitor Jubatus cluster status in top-like interface
-* ``jubamodel``: dump/transform Jubatus 0.5.x model
+* ``jubamodel``: dump/transform Jubatus model
 * ``jubafetch``: online snapshot management of Jubatus model
-* ``jubacfg``: jubaconfig wrapper for the rest of us
+* ``jubatop``: monitor Jubatus cluster status in top-like interface
+* ``jubacfg``: jubaconfig for the rest of us
 * ``zk``: Wrapper for ZooKeeper Four Letter Commands
 
 For the detailed usage, see the built-in documentation using ``--help`` option.
@@ -18,6 +18,7 @@ Requirements
 ----------------
 
 * Jubatus
+  * ``jubamodel`` requires Jubatus 0.5 or later
 * Python 2.6 or later
 * msgpack-rpc-python package (``pip install msgpack-rpc-python``)
 
