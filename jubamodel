@@ -33,12 +33,12 @@ class JubaModel(object):
     # input
     try:
       with open(in_file) as f:
+        if in_format == 'auto':
+          in_format = JubaModelFile.probe_format(f)
         if in_format == 'binary':
           model = JubaModelFile.load_binary(f, not no_validate)
         elif in_format == 'json':
           model = JubaModelFile.load_json(f)
-        elif in_format == 'auto':
-          model = JubaModelFile.load(f, not no_validate)
         else:
           raise ValueError(in_format)
     except InvalidModelFormatError as e:
@@ -57,6 +57,7 @@ class JubaModel(object):
       out = open(out_file, 'wb')
     try:
       if out_format == 'binary':
+        print >> sys.stderr, "Warning: conversion to binary may generate corrupt model"
         model.dump_binary(out)
       elif out_format == 'json':
         model.dump_json(out)
@@ -105,13 +106,13 @@ class JubaModelFile(object):
       buf_user.close()
 
   @classmethod
-  def load(cls, f, validate=True):
+  def probe_format(cls, f):
     m = f.read(1)
     f.seek(-1, 1)
     if m == cls.MAGIC[0]:
-      return cls.load_binary(f, validate)
+      return 'binary'
     elif m == '{':
-      return cls.load_json(f)
+      return 'json'
     raise InvalidModelFormatError('failed to auto-detect format')
 
   @classmethod
