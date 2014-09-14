@@ -346,13 +346,13 @@ if __name__ == '__main__':
   parser.add_option('-O', '--output',          type='str',                       default=None,
                     help='specify output file instead of stdout')
   parser.add_option('-C', '--output-config',   type='str',                       default=None,
-                    help='specify output file to config extracted from model')
+                    help='specify output file of config extracted from model')
   parser.add_option('-f', '--no-validate',     action='store_true',              default=False,
                     help='disable validation of binary model files')
   parser.add_option('-F', '--fix-header',      action='store_true',              default=False,
                     help='fix corrupt header if possible')
   parser.add_option('-h', '--help',            action='store_true',              default=False,
-                    help='disable validation of model files')
+                    help='show usage')
 
   (args, files) = parser.parse_args()
 
