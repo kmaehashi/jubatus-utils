@@ -29,7 +29,7 @@ main() {
       usage
       ;;
     * )
-      echo "Unknown subcommand: "${1}"" > /dev/stderr
+      echo "Unknown subcommand: "${1}"" >&2
       usage
       ;;
   esac
@@ -43,7 +43,7 @@ main() {
 
 usage() {
   CMD="$(basename "${0}")"
-  cat << _EOF_ > /dev/stderr
+  cat << _EOF_ >&2
 Usage:
   ${CMD} <subcommand>
 
@@ -97,4 +97,4 @@ _EOF_
   exit 1
 }
 
-main "${@}"
+main "${@:-}"
