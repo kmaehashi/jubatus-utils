@@ -42,10 +42,10 @@ class JubaModel(object):
         else:
           raise ValueError(in_format)
     except InvalidModelFormatError as e:
-      print("Error: invalid model format: {}".format(e))
+      print("Error: invalid model format: {0}".format(e))
       return
     except Exception as e:
-      print("Error: failed to read model ({}): {}".format(e.__class__.__name__, e))
+      print("Error: failed to read model ({0}): {1}".format(e.__class__.__name__, e))
       return
 
     if fix_header:
@@ -65,7 +65,7 @@ class JubaModel(object):
       else:
         raise ValueError(out_format)
     except Exception as e:
-      print("Error: failed to write model ({}): {}".format(e.__class__.__name__, e))
+      print("Error: failed to write model ({0}): {1}".format(e.__class__.__name__, e))
       return
     finally:
       out.close()
@@ -124,29 +124,32 @@ class JubaModelFile(object):
       # header
       h = JubaModelFile.Header.load(f)
       if not h.magic_number == cls.MAGIC:
-        raise InvalidModelFormatError('invalid magic value: %s' % h.magic_number)
+        raise InvalidModelFormatError('invalid magic value: {0}'.format(h.magic_number))
       m.header = h
       checksum = crc32(h.dump(StringIO(), False).getvalue(), checksum)
 
       # system_data
       buf = f.read(h.system_data_size)
       if h.system_data_size != len(buf):
-        raise InvalidModelFormatError('EOF detected while reading system_data: ' +
-                                      'expected {} bytes, got {} bytes'.format(h.system_data_size, len(buf)))
+        raise InvalidModelFormatError(
+            'EOF detected while reading system_data: ' +
+            'expected {0} bytes, got {1} bytes'.format(h.system_data_size, len(buf)))
       m.system_data = JubaModelFile.SystemDataContainer.load(StringIO(buf))
       checksum = crc32(buf, checksum)
 
       # user_data
       buf = f.read(h.user_data_size)
       if h.user_data_size != len(buf):
-        raise InvalidModelFormatError('EOF detected while reading user_data: ' +
-                                      'expected {} bytes, got {} bytes'.format(h.user_data_size, len(buf)))
+        raise InvalidModelFormatError(
+            'EOF detected while reading user_data: ' +
+            'expected {0} bytes, got {1} bytes'.format(h.user_data_size, len(buf)))
       m.user_data = JubaModelFile.UserDataContainer.load(StringIO(buf))
       checksum = crc32(buf, checksum)
 
       # check CRC
       if unpack('I', pack('i', checksum))[0] != h.crc32:
-        raise InvalidModelFormatError('CRC32 mismatch: expected {}, got {}'.format(h.crc32, checksum))
+        raise InvalidModelFormatError(
+            'CRC32 mismatch: expected {0}, got {1}'.format(h.crc32, checksum))
 
       # must be EOF here
       if len(f.read(1)) != 0:
@@ -186,7 +189,7 @@ class JubaModelFile(object):
       buf.append("------------------------------------------")
 
       for (k, v) in obj.get_record():
-        buf.append('{:32}{}'.format(k, v))
+        buf.append('{0:32}{1}'.format(k, v))
       buf.append('')
     return '\n'.join(buf)
 
@@ -209,11 +212,11 @@ class JubaModelFile(object):
         size = calcsize(fmt)
         value = f.read(size)
         if len(value) != size:
-          raise InvalidModelFormatError('failed to read %s in header' % key)
+          raise InvalidModelFormatError('failed to read {0} in header'.format(key))
         try:
           value_unpack = unpack(fmt, value)[0]
         except ValueError:
-          raise InvalidModelFormatError('failed to parse %s value %s as %s' % (key, str(value), fmt))
+          raise InvalidModelFormatError('failed to parse {0} value {1} as {2}'.format(key, str(value), fmt))
         setattr(h, key, value_unpack)
       return h
 
@@ -258,7 +261,7 @@ class JubaModelFile(object):
       elif count_delta < 0:
         # More fields than expected.
         for i in xrange(count_delta):
-          fields.append('UNKNOWN_FIELD_%d' % i)
+          fields.append('UNKNOWN_FIELD_{0}'.format(i))
       for idx in xrange(len(arr)):
         setattr(dc, fields[idx], arr[idx])
       return dc
