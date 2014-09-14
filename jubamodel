@@ -23,6 +23,7 @@ import sys
 from struct import pack, unpack, calcsize
 from binascii import crc32
 from cStringIO import StringIO
+import base64
 import optparse
 
 import msgpack
@@ -57,12 +58,11 @@ class JubaModel(object):
       out = open(out_file, 'wb')
     try:
       if out_format == 'binary':
-        print >> sys.stderr, "Warning: conversion to binary may generate corrupt model"
         model.dump_binary(out)
       elif out_format == 'json':
         model.dump_json(out)
       elif out_format == 'text':
-        out.write(str(model))
+        model.dump_text(out)
       else:
         raise ValueError(out_format)
     except Exception as e:
@@ -78,32 +78,30 @@ class JubaModelFile(object):
     self.header =      JubaModelFile.Header()
     self.system_data = JubaModelFile.SystemDataContainer()
     self.user_data =   JubaModelFile.UserDataContainer()
+    self.user_data_raw = ''
 
   def update_header(self):
     self.header.magic_number = self.MAGIC
 
     buf_header = StringIO()
     buf_system = StringIO()
-    buf_user = StringIO()
 
     try:
       self.system_data.dump(buf_system)
       self.header.system_data_size = len(buf_system.getvalue())
 
-      self.user_data.dump(buf_user)
-      self.header.user_data_size = len(buf_user.getvalue())
+      self.header.user_data_size = len(self.user_data_raw)
 
       checksum = 0
       self.header.dump(buf_header, False)
 
       checksum = crc32(buf_header.getvalue(), checksum)
       checksum = crc32(buf_system.getvalue(), checksum)
-      checksum = crc32(buf_user.getvalue(), checksum)
+      checksum = crc32(self.user_data_raw, checksum)
       self.header.crc32 = unpack('I', pack('i', checksum))[0]
     finally:
       buf_header.close()
       buf_system.close()
-      buf_user.close()
 
   @classmethod
   def probe_format(cls, f):
@@ -144,6 +142,7 @@ class JubaModelFile(object):
         raise InvalidModelFormatError(
             'EOF detected while reading user_data: ' +
             'expected {0} bytes, got {1} bytes'.format(h.user_data_size, len(buf)))
+      m.user_data_raw = buf
       m.user_data = JubaModelFile.UserDataContainer.load(StringIO(buf))
       checksum = crc32(buf, checksum)
 
@@ -158,29 +157,49 @@ class JubaModelFile(object):
     else:
       m.header      = JubaModelFile.Header.load(f)
       m.system_data = JubaModelFile.SystemDataContainer.load(StringIO(f.read(m.header.system_data_size)))
-      m.user_data   = JubaModelFile.UserDataContainer.load(StringIO(f.read(m.header.user_data_size)))
+      m.user_data_raw = f.read(m.header.user_data_size)
+      m.user_data   = JubaModelFile.UserDataContainer.load(StringIO(m.user_data_raw))
     return m
 
   def dump_binary(self, f):
     self.header.dump(f)
     self.system_data.dump(f)
-    self.user_data.dump(f)
+    f.write(self.user_data_raw)
 
   @classmethod
   def load_json(cls, f):
     model = cls()
     record = json.load(f)
-    for entity in ['header', 'system_data', 'user_data']:
+    for entity in ['header', 'system_data']:
       getattr(model, entity).set_record(record[entity])
+
+    if 'user_data_raw' in record:
+      if 'user_data' in record:
+        print >> sys.stderr('Warning: ignoreing user_data section as user_data_raw is available')
+      model.user_data_raw = base64.b64decode(record['user_data_raw'])
+      model.user_data = JubaModelFile.UserDataContainer.load(StringIO(model.user_data_raw))
+    elif 'user_data' in record:
+      print >> sys.stderr('Warning: converting user_data from JSON format may generate corrupt model')
+      model.user_data.set_record(record['user_data'])
+      buf = StringIO()
+      model.user_data.dump(buf)
+      model.user_data_raw = buf.getvalue()
+    else:
+      return InvalidModelFormatError('user_data or user_data_raw section does not exist')
+
     return model
 
-  def dump_json(self, f):
+  def dump_json(self, f, raw_user_data=True):
     record = {}
-    for entity in ['header', 'system_data', 'user_data']:
+    for entity in ['header', 'system_data']:
       record[entity] = dict(getattr(self, entity).get_record())
+    if raw_user_data:
+      record['user_data_raw'] = base64.b64encode(self.user_data_raw)
+    else:
+      record['user_data'] = dict(self.user_data.get_record())
     json.dump(record, f, indent=2)
 
-  def __str__(self):
+  def dump_text(self, f):
     buf = []
     for (heading, obj) in [ ('Header',      self.header),
                             ('System Data', self.system_data),
@@ -192,7 +211,7 @@ class JubaModelFile(object):
       for (k, v) in obj.get_record():
         buf.append('{0:32}{1}'.format(k, v))
       buf.append('')
-    return '\n'.join(buf)
+    f.write('\n'.join(buf))
 
   class Header(object):
     FIELDS = [
