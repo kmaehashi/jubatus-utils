@@ -176,6 +176,8 @@ class JubaModelFile(object):
     model = cls()
     record = json.load(f)
     for entity in ['header', 'system_data']:
+      if entity not in record:
+        raise InvalidModelFormatError('{0} section does not exist'.format(entity))
       getattr(model, entity).set_record(record[entity])
 
     if 'user_data_raw' in record:
@@ -190,7 +192,7 @@ class JubaModelFile(object):
       model.user_data.dump(buf)
       model.user_data_raw = buf.getvalue()
     else:
-      return InvalidModelFormatError('user_data or user_data_raw section does not exist')
+      raise InvalidModelFormatError('user_data or user_data_raw section does not exist')
 
     return model
 
