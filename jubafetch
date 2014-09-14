@@ -41,7 +41,7 @@ class JubaFetch(object):
     for (host, port, model_path) in model_paths:
       out_file = pattern.format(host=host, port=port)
       if os.path.exists(out_file) and not self.force:
-        self.log('Local file already exists; specify -f to overwrite: {}'.format(out_file))
+        self.log('Local file already exists; specify -f to overwrite: {0}'.format(out_file))
         return
     try:
       self.log('Requesting save...')
@@ -57,7 +57,7 @@ class JubaFetch(object):
     for (host, port, model_path) in model_paths:
       in_file = pattern.format(host=host, port=port)
       if not os.path.exists(in_file):
-        self.log('Local file not found: {}'.format(in_file))
+        self.log('Local file not found: {0}'.format(in_file))
         return
     try:
       self.log('Distributing models...')
@@ -70,7 +70,7 @@ class JubaFetch(object):
 
   def cluster_model_collect(self, pattern, model_paths):
     for (host, port, model_path) in model_paths:
-      self.log('collecting: {}:{} ({})'.format(host, port, model_path), True)
+      self.log('collecting: {0}:{1} ({2})'.format(host, port, model_path), True)
       (fd, tmp_file) = tempfile.mkstemp(prefix='jubafetch-{host}-{port}-'.format(host=host, port=port))
       try:
         RemoteUtil.get_file(host, model_path, tmp_file)
@@ -84,13 +84,13 @@ class JubaFetch(object):
 
   def cluster_model_distribute(self, pattern, model_paths):
     for (host, port, model_path) in model_paths:
-      self.log('distributing: {}:{} ({})'.format(host, port, model_path), True)
+      self.log('distributing: {0}:{1} ({2})'.format(host, port, model_path), True)
       source_path = pattern.format(host=host, port=port)
       RemoteUtil.put_file(host, source_path, model_path)
 
   def cluster_model_remove(self, model_paths):
     for (host, port, model_path) in model_paths:
-      self.log('removing: {}:{} ({})'.format(host, port, model_path), True)
+      self.log('removing: {0}:{1} ({2})'.format(host, port, model_path), True)
       RemoteUtil.remove_file(host, model_path)
 
   def get_model_paths(self, model_name):
@@ -176,7 +176,7 @@ if __name__ == '__main__':
   if args.save and args.load:
     parser.error('save and load cannot be specified at once')
   if len(direct_args) != 0:
-    parser.error('unused remaining arguments: {}'.format(direct_args))
+    parser.error('unused remaining arguments: {0}'.format(direct_args))
 
   jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.force, args.verbose)
 
@@ -185,8 +185,8 @@ if __name__ == '__main__':
       jubafetch.start_load(args.model, args.id)
     else:
       jubafetch.start_save(args.model, args.id)
-  except BaseException as e:
+  except Exception as e:
     if args.verbose:
       raise
-    print "{}: {}".format(e.__class__.__name__, str(e))
+    print "{0}: {1}".format(e.__class__.__name__, str(e))
     sys.exit(2)
