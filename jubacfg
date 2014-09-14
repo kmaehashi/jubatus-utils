@@ -47,7 +47,7 @@ main() {
       usage
       ;;
   esac
-  echo "${CMDLINE}" > /dev/stderr
+  echo "${CMDLINE}" >&2
   ${CMDLINE}
 }
 
@@ -71,14 +71,14 @@ normalize_engine_name() {
     graph | gra )
       echo graph ;;
     * )
-      echo "Error: Unknown engine name: ${1}" > /dev/stderr
+      echo "Error: Unknown engine name: ${1}" >&2
       exit 1
   esac
 }
 
 usage() {
   CMD="$(basename "${0}")"
-  cat << _EOF_ > /dev/stderr
+  cat << _EOF_ >&2
 Usage:
   ${CMD} { write | set }       TYPE NAME FILE
   ${CMD} { read | show | get } TYPE NAME
@@ -98,4 +98,4 @@ _EOF_
 }
 
 
-main "${@}"
+main "${@:-}"
