@@ -1,6 +1,6 @@
 #!/bin/bash -ue
 
-# jubacfg - jubaconfig wrapper for the rest of us
+# jubacfg - jubaconfig for the rest of us
 # Copyright © 2014 Kenichi Maehashi. All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
