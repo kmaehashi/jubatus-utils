@@ -44,8 +44,8 @@ class JubaModel(object):
     except InvalidModelFormatError as e:
       print("Error: invalid model format: {}".format(e))
       return
-    except BaseException as e:
-      print("Error: failed to read model: {}".format(e))
+    except Exception as e:
+      print("Error: failed to read model ({}): {}".format(e.__class__.__name__, e))
       return
 
     if fix_header:
@@ -64,8 +64,8 @@ class JubaModel(object):
         out.write(str(model))
       else:
         raise ValueError(out_format)
-    except BaseException as e:
-      print("Error: failed to write model: {}".format(e))
+    except Exception as e:
+      print("Error: failed to write model ({}): {}".format(e.__class__.__name__, e))
       return
     finally:
       out.close()
