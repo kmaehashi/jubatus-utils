@@ -19,10 +19,10 @@ Requirements
 
 * Jubatus
   * ``jubamodel`` requires Jubatus 0.5 or later
-* Python 2.6 or later
+* Python 2.6 or 2.7
 * msgpack-rpc-python package (``pip install msgpack-rpc-python``)
 
-Jubatus Python client is not required.
+Jubatus Python client is *not* required.
 
 License
 ----------------
