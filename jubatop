@@ -133,7 +133,7 @@ class JubaTop(object):
             out.write('\n')
 
     def _print_column(self, msg, width, out):
-        out.write('{:{width}}'.format(str(msg), width=width+1))
+        out.write('{0:{width}}'.format(str(msg), width=width+1))
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
