@@ -17,12 +17,12 @@ You may also be interested in [Jubash](https://github.com/kmaehashi/jubash), a h
 Requirements
 ----------------
 
-* Jubatus
-  * ``jubamodel`` requires Jubatus 0.5 or later
-* Python 2.6 or 2.7
-* msgpack-rpc-python package (``pip install msgpack-rpc-python``)
+* Python 2.6 or 2.7 (for jubamodel, jubafetch, jubatop)
+  * msgpack-rpc-python package (``pip install msgpack-rpc-python``)
+  * Jubatus Python client is *not* required.
 
-Jubatus Python client is *not* required.
+* Jubatus
+  * ``jubamodel`` can process Jubatus 0.5+ model files
 
 License
 ----------------
