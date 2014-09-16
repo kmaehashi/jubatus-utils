@@ -157,8 +157,10 @@ class RemoteModelFileManipulator(ModelFileManipulator):
 if __name__ == '__main__':
   parser = optparse.OptionParser()
 
+  LOCAL_HOST='127.0.0.1'
+
   # arguments
-  parser.add_option('-H', '--host',      type='string', default='127.0.0.1',
+  parser.add_option('-H', '--host',      type='string', default=LOCAL_HOST,
                     help='host name or IP address of the server / proxy (default: %default)')
   parser.add_option('-P', '--port',      type='int',    default=9199,
                     help='port number of the server / proxy (default: %default)')
@@ -175,7 +177,9 @@ if __name__ == '__main__':
   parser.add_option('-i', '--id',        type='str',    default='jubafetch_snapshot',
                     help='model ID used for save/load (default: %default)')
   parser.add_option('-L', '--local',     action='store_true', default=False,
-                    help='directly manipulate files instead of ssh/scp, assuming the data directory is on local (or shared) file system')
+                    help='directly manipulate files instead of ssh/scp, assuming that data ' +
+                         'directory is on local (or shared) file system; default when --host ' +
+                         'is not specified')
   parser.add_option('-f', '--force',     action='store_true', default=False,
                     help='overwrite existing model file when --save')
   parser.add_option('-v', '--verbose',   action='store_true', default=False,
@@ -189,6 +193,9 @@ if __name__ == '__main__':
     parser.error('save and load cannot be specified at once')
   if len(direct_args) != 0:
     parser.error('unused remaining arguments: {0}'.format(direct_args))
+
+  if args.host == LOCAL_HOST:
+    args.local = True
 
   jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.force, args.verbose)
 
