@@ -157,11 +157,11 @@ class RemoteModelFileManipulator(ModelFileManipulator):
 if __name__ == '__main__':
   parser = optparse.OptionParser()
 
-  LOCAL_HOST='127.0.0.1'
+  DEFAULT_TARGET_HOST='127.0.0.1'
 
   # arguments
-  parser.add_option('-H', '--host',      type='string', default=LOCAL_HOST,
-                    help='host name or IP address of the server / proxy (default: %default)')
+  parser.add_option('-H', '--host',      type='string', default=None,
+                    help='host name or IP address of the server / proxy (default: {0})'.format(DEFAULT_TARGET_HOST))
   parser.add_option('-P', '--port',      type='int',    default=9199,
                     help='port number of the server / proxy (default: %default)')
   parser.add_option('-C', '--cluster',   type='string', default='',
@@ -194,7 +194,8 @@ if __name__ == '__main__':
   if len(direct_args) != 0:
     parser.error('unused remaining arguments: {0}'.format(direct_args))
 
-  if args.host == LOCAL_HOST:
+  if args.host is None:
+    args.host = DEFAULT_TARGET_HOST
     args.local = True
 
   jubafetch = JubaFetch(args.host, args.port, args.cluster, args.timeout, args.force, args.verbose)
