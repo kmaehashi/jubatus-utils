@@ -54,22 +54,24 @@ main() {
 normalize_engine_name() {
   # Note: abbreviation form may change in the future version!
   case "${1}" in
-    classifier | cla )
+    cla* )
       echo classifier ;;
-    regression | reg )
+    reg* )
       echo regression ;;
-    recommender | rec )
+    rec* )
       echo recommender ;;
-    nearest_neighbor | nn )
+    nea* | nn )
       echo nearest_neighbor ;;
-    anomaly | ano )
+    ano* )
       echo anomaly ;;
-    stat | sta )
+    sta* )
       echo stat ;;
-    clustering | clu )
+    clu* )
       echo clustering ;;
-    graph | gra )
+    gra* )
       echo graph ;;
+    bur* )
+      echo burst ;;
     * )
       echo "Error: Unknown engine name: ${1}" >&2
       exit 1
