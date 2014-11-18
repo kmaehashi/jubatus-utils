@@ -140,11 +140,11 @@ class ModelFileManipulator(object):
 
 class LocalModelFileManipulator(ModelFileManipulator):
   def get_file(self, _, source_path, dest_path):
-    return self._run(['cp', source_path, dest_path])
+    return self._run(['cp', os.path.abspath(source_path), os.path.abspath(dest_path)])
   def put_file(self, _, source_path, dest_path):
-    return self._run(['ln', '-sf', source_path, dest_path])
+    return self._run(['ln', '-sf', os.path.abspath(source_path), os.path.abspath(dest_path)])
   def remove_file(self, _, path):
-    return self._run(['rm', '-f', path])
+    return self._run(['rm', '-f', os.path.abspath(path)])
 
 class RemoteModelFileManipulator(ModelFileManipulator):
   def get_file(self, host, source_path, dest_path):
