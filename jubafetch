@@ -78,7 +78,7 @@ class JubaFetch(object):
         proc.get_file(host, model_path, tmp_file)
         out_file = pattern.format(host=host, port=port)
         os.rename(tmp_file, out_file)
-        self.log('saved: {}'.format(out_file), True)
+        self.log('saved: {}'.format(out_file))
       except:
         os.unlink(tmp_file)
         raise
