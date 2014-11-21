@@ -332,7 +332,8 @@ class InvalidModelFormatError(Exception):
 if __name__ == '__main__':
   USAGE = '''
   jubamodel [--in-format IN_FORMAT] [--out-format OUT_FORMAT]
-            [--no-validate] [--fix-header] [--output OUTPUT]  input_file
+            [--output OUTPUT] [--output-config OUTPUT_CONFIG]
+            [--no-validate] [--fix-header]  input_file
   jubamodel --help'''
 
   EPILOG = '  input_file            model file in format specified by --input'
