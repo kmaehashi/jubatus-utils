@@ -72,6 +72,8 @@ normalize_engine_name() {
       echo graph ;;
     bur* )
       echo burst ;;
+    ban* )
+      echo bandit ;;
     * )
       echo "Error: Unknown engine name: ${1}" >&2
       exit 1
