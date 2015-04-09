@@ -1,7 +1,7 @@
 #!/bin/bash -ue
 
 # jubacfg - jubaconfig for the rest of us
-# Copyright © 2014 Kenichi Maehashi. All rights reserved.
+# Copyright © 2015 Kenichi Maehashi. All rights reserved.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
