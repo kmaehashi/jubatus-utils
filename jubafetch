@@ -74,11 +74,11 @@ class JubaFetch(object):
       self.log('collecting: {0}:{1} ({2})'.format(host, port, model_path), True)
       (fd, tmp_file) = tempfile.mkstemp(prefix='jubafetch-{host}-{port}-'.format(host=host, port=port))
       try:
-        self.log('using temporary file: {}'.format(tmp_file), True)
+        self.log('using temporary file: {0}'.format(tmp_file), True)
         proc.get_file(host, model_path, tmp_file)
         out_file = pattern.format(host=host, port=port)
         os.rename(tmp_file, out_file)
-        self.log('saved: {}'.format(out_file))
+        self.log('saved: {0}'.format(out_file))
       except:
         os.unlink(tmp_file)
         raise
