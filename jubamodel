@@ -30,7 +30,7 @@ import msgpack
 import json
 
 class JubaModel(object):
-  def start(self, in_file, out_file, out_config, in_format, out_format, no_validate, fix_header):
+  def start(self, in_file, out_file, out_config, out_user, in_format, out_format, no_validate, fix_header):
     # input
     try:
       with open(in_file) as f:
@@ -75,6 +75,11 @@ class JubaModel(object):
     if out_config:
       with open(out_config, 'wb') as f:
         f.write(model.system_data.config)
+
+    # out_user
+    if out_user:
+      with open(out_user, 'wb') as f:
+        json.dump(model.user_data.get_record(), f, indent=2)
 
 class JubaModelFile(object):
   MAGIC = 'jubatus\0'
@@ -350,6 +355,8 @@ if __name__ == '__main__':
                     help='specify output file instead of stdout')
   parser.add_option('-C', '--output-config',   type='str',                       default=None,
                     help='specify output file of config extracted from model')
+  parser.add_option('-U', '--output-user',     type='str',                       default=None,
+                    help='specify output file of the model (user data in JSON)')
   parser.add_option('-f', '--no-validate',     action='store_true',              default=False,
                     help='disable validation of binary model files')
   parser.add_option('-F', '--fix-header',      action='store_true',              default=False,
@@ -373,4 +380,4 @@ if __name__ == '__main__':
     parser.error('cannot specify multiple model files at once')
 
   jubamodel = JubaModel()
-  jubamodel.start(files[0], args.output, args.output_config, args.in_format, args.out_format, args.no_validate, args.fix_header)
+  jubamodel.start(files[0], args.output, args.output_config, args.output_user, args.in_format, args.out_format, args.no_validate, args.fix_header)
